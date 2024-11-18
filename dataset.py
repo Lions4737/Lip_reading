@@ -16,10 +16,10 @@ class MyDataset(Dataset):
     letters = ['I', 'N', 'U', 'a', 'b', 'by', 'ch', 'cl', 
                'd', 'dy', 'e', 'f', 'fy', 'g', 'gw', 'gy', 
                'h', 'hy', 'i', 'j', 'k', 'kw', 'ky', 'm', 
-               'my', 'n', 'ny', 'o', 'p', 'pau', 'py', 'r', 
-               'ry', 's', 'sh', 'sil', 't', 'ts', 'ty', 'u', 
-               'v', 'w', 'y', 'z'
-    ]
+               'my', 'n', 'ny', 'o', 'p', 'py', 'r', 
+               'ry', 's', 'sh', 't', 'ts', 'ty', 'u', 
+               'v', 'w', 'y', 'z', 'sil', 'pau'
+    ] 
 
     def __init__(self, video_path, anno_path, file_list, vid_pad, txt_pad, phase):
         self.anno_path = anno_path
@@ -52,7 +52,7 @@ class MyDataset(Dataset):
                 
                 if os.path.exists(anno_file):
                     self.data.append((video_frames_dir, anno_file, video_name))
-                    print(f"Added: {video_name}")
+                    #print(f"Added: {video_name}")
                 else:
                     print(f"Skipping {video_name}: annotation not found at {anno_file}")
         
@@ -83,7 +83,6 @@ class MyDataset(Dataset):
                 vid = HorizontalFlip(vid)
             
             vid = ColorNormalize(vid)
-            
             vid_len = min(vid.shape[0], self.vid_pad)  # 実際の長さとパディング長の小さい方
             anno_len = len(anno)
             anno = self._padding(anno, self.txt_pad)
@@ -103,7 +102,7 @@ class MyDataset(Dataset):
         """
         files = sorted(glob.glob(os.path.join(p, 'frame_*.jpg')), 
                       key=lambda x: int(re.findall(r'\d+', os.path.basename(x))[0]))
-        
+        #print(files)
         if not files:
             print(f"Warning: No frame images found in {p}")
             return None
@@ -127,7 +126,7 @@ class MyDataset(Dataset):
         array = np.stack(frames, axis=0).astype(np.float32)
         
         # パディング処理
-        if array.shape[0] < self.vid_pad:
+        if array.shape[0] < self.vid_pad: #ここがフレーム数
             # 不足分を0で埋める
             pad_width = ((0, self.vid_pad - array.shape[0]), (0, 0), (0, 0), (0, 0))
             array = np.pad(array, pad_width, mode='constant', constant_values=0)
@@ -153,14 +152,16 @@ class MyDataset(Dataset):
                     return np.array([])
                 
                 phonemes = [line[2] for line in lines]
-                phonemes = [p for p in phonemes if p.upper() not in ['SIL', 'SP']]
+                #phonemes = [p for p in phonemes if p.upper() not in ['SIL', 'PAU']]
+                phonemes = [p for p in phonemes]
+
                 
                 if not phonemes:
                     print(f"No valid phonemes found in: {name}")
                     return np.array([])
                 
                 txt = ' '.join(phonemes)
-                print(f"Processed annotation: {txt}")
+                #print(f"Processed annotation: {txt}")
                 
                 return self.txt2arr(txt, 1)
                 
@@ -207,7 +208,7 @@ class MyDataset(Dataset):
                 txt.append(MyDataset.letters[n - start])     
         return ''.join(txt).strip()
     
-    @staticmethod
+    '''@staticmethod
     def ctc_arr2txt(arr, start):
         pre = -1
         txt = []
@@ -218,7 +219,17 @@ class MyDataset(Dataset):
                 else:
                     txt.append(MyDataset.letters[n - start])                
             pre = n
-        return ''.join(txt).strip()
+        return ''.join(txt).strip()'''
+    
+    @staticmethod
+    def ctc_arr2txt(arr, start): #いったんお試し用
+        txt = []
+        for n in arr:
+            if n >= start:  # start以上のラベルのみを処理
+                # 直前と同じラベルでも出力するために条件を変更
+                txt.append(MyDataset.letters[n - start])  # ラベルをテキストに追加
+        return ''.join(txt).strip()  # 最後に結合して前後の空白を削除して返す
+
             
     @staticmethod
     def wer(predict, truth):        

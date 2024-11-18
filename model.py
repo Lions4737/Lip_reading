@@ -21,7 +21,7 @@ class LipNet(torch.nn.Module):
         self.gru1  = nn.GRU(96*4*8, 256, 1, bidirectional=True)
         self.gru2  = nn.GRU(512, 256, 1, bidirectional=True)
         
-        self.FC    = nn.Linear(512, 27+1)
+        self.FC    = nn.Linear(512, 44+1)
         self.dropout_p  = dropout_p
 
         self.relu = nn.ReLU(inplace=True)
