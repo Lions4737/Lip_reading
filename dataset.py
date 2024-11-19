@@ -19,7 +19,7 @@ class MyDataset(Dataset):
                'my', 'n', 'ny', 'o', 'p', 'py', 'r', 
                'ry', 's', 'sh', 't', 'ts', 'ty', 'u', 
                'v', 'w', 'y', 'z', 'sil', 'pau'
-    ] 
+    ] #pauとsil取り除いた
 
     def __init__(self, video_path, anno_path, file_list, vid_pad, txt_pad, phase):
         self.anno_path = anno_path
@@ -98,11 +98,10 @@ class MyDataset(Dataset):
 
     def _load_vid(self, p): 
         """
-        フレーム画像を読み込み、指定された長さにパディング
+        フレーム画像を読み込み、指定された長さにパディングまたはダウンサンプリング
         """
         files = sorted(glob.glob(os.path.join(p, 'frame_*.jpg')), 
-                      key=lambda x: int(re.findall(r'\d+', os.path.basename(x))[0]))
-        #print(files)
+                    key=lambda x: int(re.findall(r'\d+', os.path.basename(x))[0]))
         if not files:
             print(f"Warning: No frame images found in {p}")
             return None
@@ -125,14 +124,15 @@ class MyDataset(Dataset):
         # フレームを numpy 配列に変換
         array = np.stack(frames, axis=0).astype(np.float32)
         
-        # パディング処理
-        if array.shape[0] < self.vid_pad: #ここがフレーム数
+        # フレーム数の調整
+        if array.shape[0] < self.vid_pad:
             # 不足分を0で埋める
             pad_width = ((0, self.vid_pad - array.shape[0]), (0, 0), (0, 0), (0, 0))
             array = np.pad(array, pad_width, mode='constant', constant_values=0)
         elif array.shape[0] > self.vid_pad:
-            # 長すぎる場合は切り詰める
-            array = array[:self.vid_pad]
+            # フレーム数が多い場合はダウンサンプリング
+            indices = np.linspace(0, array.shape[0] - 1, self.vid_pad, dtype=np.int32)
+            array = array[indices]
         
         return array
 
