@@ -26,6 +26,11 @@ class MyDataset(Dataset):
         self.vid_pad = vid_pad
         self.txt_pad = txt_pad
         self.phase = phase
+
+        # 音素インデックス辞書を作成
+        self.phoneme_dict = {phoneme: idx for idx, phoneme in enumerate(self.letters)}
+        self.sil_index = self.phoneme_dict['sil']  # 'sil'のインデックス
+        self.pau_index = self.phoneme_dict['pau']  # 'pau'のインデックス
         
         print(f"\nInitializing dataset...")
         print(f"Video path: {video_path}")
