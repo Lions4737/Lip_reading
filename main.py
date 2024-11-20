@@ -10,11 +10,33 @@ from model import LipNet
 from dataset import MyDataset
 from tensorboardX import SummaryWriter
 
-if(__name__ == '__main__'):
-    opt = __import__('options')
-    os.environ['CUDA_VISIBLE_DEVICES'] = opt.gpu    
-    writer = SummaryWriter()
+# 最小のresultxxx.txtを見つける関数
+def find_available_result_file():
+    for i in range(1000):
+        filename = f"result{str(i).zfill(3)}.txt"
+        if not os.path.exists(filename):
+            return filename
+    raise RuntimeError("No available resultxxx.txt slot found")
 
+# ログファイルを決定
+log_file = find_available_result_file()
+
+# ログに書き込む関数
+def log(message):
+    with open(log_file, "a") as f:
+        f.write(message + "\n")
+
+if __name__ == '__main__':
+    log("hello1")
+    opt = __import__('options')
+    log("hello2")
+    os.environ['CUDA_VISIBLE_DEVICES'] = opt.gpu
+    log("hello3")    
+    writer = SummaryWriter()
+    log("hello4")
+
+# その他関数の内部printをlogに置き換え
+# 以下一部を例として変更
 # クロスエントロピー損失を計算する関数
 def calculate_ce_loss(y, txt, vid_len, txt_len):
     """
@@ -52,48 +74,22 @@ def ctc_decode(y):
     return [MyDataset.ctc_arr2txt(y[_], start=1) for _ in range(y.size(0))]
 
 def debug_batch(input):
-    """
-    データの不整合と異常を確認するデバッグ関数。
-    """
-    vid = input.get('vid')  # ビデオデータ
-    txt = input.get('txt')  # テキストデータ
-    vid_len = input.get('vid_len')  # ビデオシーケンスの長さ
-    txt_len = input.get('txt_len')  # テキストシーケンスの長さ
+    vid = input.get('vid')
+    txt = input.get('txt')
+    vid_len = input.get('vid_len')
+    txt_len = input.get('txt_len')
 
-    # 1. (a) vid_len と txt_len の不整合チェック
-    '''print("vid shape:", vid.shape)  # (batch_size, channels, frames, height, width)
-    print("txt shape:", txt.shape)  # (batch_size, seq_length)
-    print("vid_len:", vid_len)  # 各シーケンスの長さ
-    print("txt_len:", txt_len)  # 各テキストの長さ
-    print("About vid")
-    print("video size:", vid.size())
-    print(vid)
-    print("About txt")
-    print("text size:", txt.size())
-    print(txt)'''
-
-    # vid_len >= txt_len を確認
     if not torch.all(vid_len >= txt_len):
-        print("Error: vid_len < txt_len detected!")
+        log("Error: vid_len < txt_len detected!")
         for i in range(len(vid_len)):
             if vid_len[i] < txt_len[i]:
-                print(f"Batch {i}: vid_len = {vid_len[i].item()}, txt_len = {txt_len[i].item()}")
+                log(f"Batch {i}: vid_len = {vid_len[i].item()}, txt_len = {txt_len[i].item()}")
 
-    # vid_len または txt_len が 0 以下になっていないか確認
     if torch.any(vid_len <= 0) or torch.any(txt_len <= 0):
-        print("Error: vid_len or txt_len <= 0 detected!")
-        print("vid_len <= 0:", vid_len[vid_len <= 0])
-        print("txt_len <= 0:", txt_len[txt_len <= 0])
+        log("Error: vid_len or txt_len <= 0 detected!")
+        log("vid_len <= 0: " + str(vid_len[vid_len <= 0]))
+        log("txt_len <= 0: " + str(txt_len[txt_len <= 0]))
 
-    '''# 1. (b) ビデオとテキストデータそのものの異常チェック
-    print("Checking video tensor for NaN/Inf...")
-    print("Video tensor NaN:", torch.any(torch.isnan(vid)))
-    print("Video tensor Inf:", torch.any(torch.isinf(vid)))
-
-    print("Checking text tensor for NaN/Inf...")
-    print("Text tensor NaN:", torch.any(torch.isnan(txt)))
-    print("Text tensor Inf:", torch.any(torch.isinf(txt)))'''
-    
 def test(model, net):
 
     with torch.no_grad():
@@ -104,7 +100,7 @@ def test(model, net):
             opt.txt_padding,
             'test')
             
-        print('num_test_data:{}'.format(len(dataset.data)))  
+        log('num_test_data:{}'.format(len(dataset.data)))  
         model.eval()
         loader = dataset2dataloader(dataset, shuffle=False)
         loss_list = []
@@ -132,106 +128,79 @@ def test(model, net):
                 v = 1.0*(time.time()-tic)/(i_iter+1)
                 eta = v * (len(loader)-i_iter) / 3600.0
                 
-                print(''.join(101*'-'))                
-                print('{:<50}|{:>50}'.format('predict', 'truth'))
-                print(''.join(101*'-'))                
+                log(''.join(101*'-'))                
+                log('{:<50}|{:>50}'.format('predict', 'truth'))
+                log(''.join(101*'-'))                
                 for (predict, truth) in list(zip(pred_txt, truth_txt))[:10]:
-                    print('{:<50}|{:>50}'.format(predict, truth))                
-                print(''.join(101 *'-'))
-                print('test_iter={},eta={},wer={},cer={}'.format(i_iter,eta,np.array(wer).mean(),np.array(cer).mean()))                
-                print(''.join(101 *'-'))
+                    log('{:<50}|{:>50}'.format(predict, truth))                
+                log(''.join(101 *'-'))
+                log('test_iter={},eta={},wer={},cer={}'.format(i_iter,eta,np.array(wer).mean(),np.array(cer).mean()))                
+                log(''.join(101 *'-'))
                 
         return (np.array(loss_list).mean(), np.array(wer).mean(), np.array(cer).mean())
-    
+
 def train(model, net):
-    
-    dataset = MyDataset(opt.video_path,
-        opt.anno_path,
-        opt.train_list,
-        opt.vid_padding,
-        opt.txt_padding,
-        'train')
-        
+    log("Starting training...")
+    dataset = MyDataset(opt.video_path, opt.anno_path, opt.train_list, opt.vid_padding, opt.txt_padding, 'train')
     loader = dataset2dataloader(dataset) 
-    optimizer = optim.Adam(model.parameters(),
-                lr = opt.base_lr,
-                weight_decay = 0.,
-                amsgrad = True)
-                
-    print('num_train_data:{}'.format(len(dataset.data)))    
+    optimizer = optim.Adam(model.parameters(), lr=opt.base_lr, weight_decay=0., amsgrad=True)
+    log(f'num_train_data: {len(dataset.data)}')    
     tic = time.time()
-    
+
     torch.cuda.empty_cache()
     train_cer = []
     for epoch in range(opt.max_epoch):
         for (i_iter, input) in enumerate(loader):
-            # データローダー出力チェック
-            '''print("Checking DataLoader output for NaN/Inf...")
-            print("Video tensor NaN:", torch.any(torch.isnan(input['vid'])))
-            print("Video tensor Inf:", torch.any(torch.isinf(input['vid'])))
-            print("Text tensor NaN:", torch.any(torch.isnan(input['txt'])))
-            print("Text tensor Inf:", torch.any(torch.isinf(input['txt'])))'''
             debug_batch(input)
             model.train()
             vid = input.get('vid').cuda()
             txt = input.get('txt').cuda()
             vid_len = input.get('vid_len').cuda()
             txt_len = input.get('txt_len').cuda()
-            
+
             optimizer.zero_grad()
             y = net(vid)
-            
-            # クロスエントロピー損失を計算
             loss = calculate_ce_loss(y, txt, vid_len, txt_len)
             # 損失チェック
-            print("Loss NaN:", torch.isnan(loss))
-            print("Loss Inf:", torch.isinf(loss))
+            log(f"nan/inf check for loss:")
+            log(f"Loss contains NaN: {torch.isnan(loss).any().item()}")
+            log(f"Loss contains Inf: {torch.isinf(loss).any().item()}")
             for name, param in model.named_parameters():
                 if torch.any(torch.isnan(param)) or torch.any(torch.isinf(param)):
-                    print(f"NaN or Inf detected in parameter: {name}")
-
+                    log(f"NaN or Inf detected in parameter: {name}")
             loss.backward()
-            # 勾配のクリッピングを追加
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-            
             # 勾配チェック
             for name, param in model.named_parameters():
                 if param.grad is not None:
-                    print(f"Gradient {name}: Mean = {param.grad.mean()}, Std = {param.grad.std()}")
+                    log(f"Gradient {name}: Mean = {param.grad.mean()}, Std = {param.grad.std()}")
                     if torch.any(torch.isnan(param.grad)):
-                        print(f"NaN detected in gradient of {name}")
+                        log(f"NaN detected in gradient of {name}")
                     if torch.any(torch.isinf(param.grad)):
-                        print(f"Inf detected in gradient of {name}")
-
-            if(opt.is_optimize):
+                        log(f"Inf detected in gradient of {name}")
+            if opt.is_optimize:
                 optimizer.step()
-            
-            tot_iter = i_iter + epoch*len(loader)
-            
+            tot_iter = i_iter + epoch * len(loader)
             pred_txt = ctc_decode(y)
-            
             truth_txt = [MyDataset.arr2txt(txt[_], start=1) for _ in range(txt.size(0))]
             train_cer.extend(MyDataset.cer(pred_txt, truth_txt))
-            
-            if(tot_iter % opt.display == 0):
-                v = 1.0*(time.time()-tic)/(tot_iter+1)
-                eta = (len(loader)-i_iter)*v/3600.0
-                
+
+            if tot_iter % opt.display == 0:
+                v = (time.time() - tic) / (tot_iter + 1)
+                eta = (len(loader) - i_iter) * v / 3600.0
                 writer.add_scalar('train loss', loss, tot_iter)
-                writer.add_scalar('train cer', np.array(train_cer).mean(), tot_iter)              
-                print(''.join(101*'-'))                
-                print('{:<50}|{:>50}'.format('predict', 'truth'))                
-                print(''.join(101*'-'))
-                
+                writer.add_scalar('train cer', np.array(train_cer).mean(), tot_iter)  
+                log(''.join(101 * '-'))                
+                log('{:<50}|{:>50}'.format('predict', 'truth'))                
+                log(''.join(101 * '-'))
                 for (predict, truth) in list(zip(pred_txt, truth_txt))[:3]:
-                    print('{:<50}|{:>50}'.format(predict, truth))
-                print(''.join(101*'-'))                
-                print('epoch={},tot_iter={},eta={},loss={},train_cer={}'.format(epoch, tot_iter, eta, loss, np.array(train_cer).mean()))
-                print(''.join(101*'-'))
-                
+                    log('{:<50}|{:>50}'.format(predict, truth))
+                log(''.join(101 * '-'))                
+                log(f'epoch={epoch}, tot_iter={tot_iter}, eta={eta}, loss={loss}, train_cer={np.array(train_cer).mean()}')
+                log(''.join(101 * '-'))
             if(tot_iter % opt.test_step == 0):                
                 (loss, wer, cer) = test(model, net)
-                print('i_iter={},lr={},loss={},wer={},cer={}'
+                log('i_iter={},lr={},loss={},wer={},cer={}'
                     .format(tot_iter,show_lr(optimizer),loss,wer,cer))
                 writer.add_scalar('val loss', loss, tot_iter)                    
                 writer.add_scalar('wer', wer, tot_iter)
@@ -243,23 +212,22 @@ def train(model, net):
                 if(not opt.is_optimize):
                     exit()
 
-# main部分を変更し、ネットワークをトレーニング
-if(__name__ == '__main__'):
-    print("Loading options...")
-    model = LipNet()
-    model = model.cuda()
+# main部分も同様に修正
+if __name__ == '__main__':
+    log("Loading options...")
+    model = LipNet().cuda()
     net = nn.DataParallel(model).cuda()
 
-    if(hasattr(opt, 'weights')):
+    if hasattr(opt, 'weights'):
         pretrained_dict = torch.load(opt.weights)
         model_dict = model.state_dict()
         pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict.keys() and v.size() == model_dict[k].size()}
-        missed_params = [k for k, v in model_dict.items() if not k in pretrained_dict.keys()]
-        print('loaded params/tot params:{}/{}'.format(len(pretrained_dict),len(model_dict)))
-        print('miss matched params:{}'.format(missed_params))
+        missed_params = [k for k, v in model_dict.items() if k not in pretrained_dict.keys()]
+        log(f'loaded params/tot params: {len(pretrained_dict)}/{len(model_dict)}')
+        log(f'miss matched params: {missed_params}')
         model_dict.update(pretrained_dict)
         model.load_state_dict(model_dict)
-        
+
     torch.manual_seed(opt.random_seed)
     torch.cuda.manual_seed_all(opt.random_seed)
     train(model, net)
