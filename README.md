@@ -14,6 +14,8 @@
  - main4.py 頻度の逆比にpenalty
  - main5.py　silとpauと母音にpenalty
  - main6.py silとpauを損失計算から除去
+- weights 各種実装後の重み
+- resultxxx.py mainxxx.pyの結果
 
 ## データセットの作り方
 data直下に
