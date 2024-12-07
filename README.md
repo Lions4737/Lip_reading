@@ -1,6 +1,6 @@
 # 使用方法
 ## 各ディレクトリ・ファイルについて
-- data ROHANの動画のdataおよびannotation dataを格納しておく（これらについてはhttps://zunko.jp/multimodal_dev/twdashbord.php参照）
+- data ROHANの動画のdataおよびannotation dataを格納しておく（これらについてはhttps://zunko.jp/multimodal_dev/twdashbord.php 参照）
 - pretrain 元のLIPNETの各パラメータの重み
 - scripts 唇抽出用
 - annotation.py　次章参照
