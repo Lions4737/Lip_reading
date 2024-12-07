@@ -1,4 +1,20 @@
 # 使用方法
+## 各ディレクトリ・ファイルについて
+- data ROHANの動画のdataおよびannotation dataを格納しておく（これらについてはhttps://zunko.jp/multimodal_dev/twdashbord.php参照）
+- pretrain 元のLIPNETの各パラメータの重み
+- scripts 唇抽出用
+- annotation.py　次章参照
+- cvtransforms.py データの水増し、加工
+- dataset.py　ファイル読み込みやcerの計算の定義等
+- model.py ネットワークの構造を定義（LIPNETをベースにした構造）
+- option.py 各種ハイパーパラメータの調整
+- main.py trainとtest、lossの計算
+ - main.py, main3.py　特にペナルティなし
+ - main2.py silとpauにpenalty
+ - main4.py 頻度の逆比にpenalty
+ - main5.py　silとpauと母音にpenalty
+ - main6.py silとpauを損失計算から除去
+
 ## データセットの作り方
 data直下に
 ①annotation
